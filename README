@@ -1,25 +1,26 @@
-Sharded, memcached counter for Google App Engine
+Sharded, memcached counter for Google App Engine with error tolerance
 
 Copyright 2008, William T Katz.
 Released under Apache License, version 2.0
 
-This is one way of implementing counters based on a Google best practices talk:
-http://sites.google.com/site/io/building-scalable-web-applications-with-google-app-engine
+Should be used for counters that handle a lot of concurrent use.
+Follows pattern described in Google I/O talk:
+    http://sites.google.com/site/io/building-scalable-web-applications-with-google-app-engine
 
-It shards a counter to decrease contentions on writes.  Rather than use a
-Model for the counter configuration as in the Google example, this version
-uses a memcached counter that can be fed with an expandable shard count.
-
-Memcache is used for caching counts, although you can force non-cached 
-counts.
+Memcache is used for caching counts and if a cached count is available, it is
+the most correct. If there are datastore put issues, we store the un-put 
+values into a delayed_incr memcache that will be applied as soon as the next shard put is successful. Changes will only be lost if we lose memcache before 
+a successful datastore shard put or there's a failure/error in memcache.
 
 Usage:
     hits = Counter('hits')
     hits.increment()
     my_hits = hits.count
-    hits.get_count(nocache=True)  # Forces non-cached count.
-    hits.decrement()
-    hits.delete()                 # Deletes all associated shards.
+    hits.get_count(nocache=True)  # Forces non-cached count of all shards
+    hits.count = 6                # Set the counter to arbitrary value
+    hits.increment(incr=-1)       # Decrement
+    hits.increment(10)
 
-For an example of its use, you can see the Tag model in the Bloog open-source
-blog software for App Engine (http://github.com/DocSavage/bloog).
+For an example of its use (early version), you can see the Tag model in the 
+Bloog open-source blog software for App Engine 
+(http://github.com/DocSavage/bloog).
