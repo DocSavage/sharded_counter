@@ -53,10 +53,6 @@ class MemcachedCount(object):
         elif incr < 0:
             memcache.decr(self.key, -incr)
 
-# Naming function for shard key names in datastore and memcache
-def get_shardname(name, shard):
-    return 'Shard' + name + str(shard)
-
 class Counter(object):
     """A counter using sharded writes to prevent contentions.
 
@@ -114,6 +110,7 @@ class Counter(object):
         delta = value - cur_value
         if delta != 0:
             CounterShard.increment(self, incr=delta)
+
     count = property(get_count, set_count)
 
     def increment(self, incr=1, refresh=False):
@@ -128,9 +125,9 @@ class CounterShard(db.Model):
     @classmethod
     def increment(cls, counter, incr=1):
         index = random.randint(1, Counter.NUM_SHARDS)
-        shard_key_name = get_shardname(counter.name, index)
         counter_name = counter.name
         delayed_incr = counter.delayed_incr.count
+        shard_key_name = 'Shard' + counter_name + str(index)
         def get_or_create_shard():
             shard = CounterShard.get_by_key_name(shard_key_name)
             if shard is None:
